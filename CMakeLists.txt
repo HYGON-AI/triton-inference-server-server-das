@@ -75,7 +75,7 @@ option(TRITON_ENABLE_ASAN "Build with address sanitizer" OFF)
 option(USE_HCU "Use HCU (Hygon DTK/ROCm) instead of NVIDIA CUDA" OFF)
 
 # Repo tags
-set(TRITON_REPO_ORGANIZATION "https://github.com/forwithgod" CACHE STRING "Git repository to pull from")
+set(TRITON_REPO_ORGANIZATION "https://github.com/HYGON-AI" CACHE STRING "Git repository to pull from")
 set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING
     "Tag for triton-inference-server/third_party repo")
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
@@ -118,7 +118,7 @@ include(FetchContent)
 
 # HCU: pull the Hygon DTK adapted core fork from the configured organization
 set(TRITON_CORE_GIT_REPOSITORY "${TRITON_REPO_ORGANIZATION}/triton-inference-server-core-das.git")
-set(TRITON_CORE_GIT_TAG "main")
+set(TRITON_CORE_GIT_TAG "${TRITON_CORE_REPO_TAG}")
 
 FetchContent_Declare(
   repo-core

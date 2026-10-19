@@ -40,11 +40,11 @@ include(FetchContent)
 
 # HCU: pull the Hygon DTK adapted forks from the configured organization
 set(TRITON_COMMON_GIT_REPOSITORY "${TRITON_REPO_ORGANIZATION}/triton-inference-server-common-das.git")
-set(TRITON_COMMON_GIT_TAG "main")
+set(TRITON_COMMON_GIT_TAG "${TRITON_COMMON_REPO_TAG}")
 set(TRITON_CORE_GIT_REPOSITORY "${TRITON_REPO_ORGANIZATION}/triton-inference-server-core-das.git")
-set(TRITON_CORE_GIT_TAG "main")
+set(TRITON_CORE_GIT_TAG "${TRITON_CORE_REPO_TAG}")
 set(TRITON_BACKEND_GIT_REPOSITORY "${TRITON_REPO_ORGANIZATION}/triton-inference-server-backend-das.git")
-set(TRITON_BACKEND_GIT_TAG "main")
+set(TRITON_BACKEND_GIT_TAG "${TRITON_BACKEND_REPO_TAG}")
 
 
 FetchContent_Declare(
