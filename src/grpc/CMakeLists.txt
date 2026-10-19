@@ -41,7 +41,7 @@ target_compile_features(grpc-endpoint-library PRIVATE cxx_std_${TRITON_MIN_CXX_S
 target_compile_options(
   grpc-endpoint-library
   PRIVATE
-    -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=maybe-uninitialized -Werror
+    -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations $<$<NOT:$<BOOL:${USE_HCU}>>:-Wno-error=maybe-uninitialized> $<$<NOT:$<BOOL:${USE_HCU}>>:-Werror>
 )
 
 set_target_properties(
@@ -94,7 +94,7 @@ if(${TRITON_ENABLE_GPU})
   target_link_libraries(
     grpc-endpoint-library
     PUBLIC
-      CUDA::cudart
+      $<IF:$<BOOL:${USE_HCU}>,hip::host,CUDA::cudart>
   )
 endif() # TRITON_ENABLE_GPU
 

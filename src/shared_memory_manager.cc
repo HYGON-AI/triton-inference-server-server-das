@@ -267,6 +267,24 @@ OpenCudaIPCRegion(
   return nullptr;
 }
 
+#ifdef USE_HCU
+// HIP (DCU): use hipMemGetAddressRange directly to query the IPC region size
+TRITONSERVER_Error*
+GetCudaSharedMemoryRegionSize(hipDeviceptr_t data_ptr, size_t& shm_region_size)
+{
+  hipDeviceptr_t base = nullptr;
+  hipError_t result = hipMemGetAddressRange(&base, &shm_region_size, data_ptr);
+  if (result != hipSuccess) {
+    return TRITONSERVER_ErrorNew(
+        TRITONSERVER_ERROR_INTERNAL,
+        std::string(
+            "Failed to get HIP address range: " +
+            std::string(hipGetErrorString(result)))
+            .c_str());
+  }
+  return nullptr;
+}
+#else
 // Using `cudaGetDriverEntryPoint` from CUDA runtime API to get CUDA driver
 // entry point. This approach is used to avoid linking against CUDA driver
 // library so that when Triton is built with GPU support, it can still be run on
@@ -314,6 +332,7 @@ GetCudaSharedMemoryRegionSize(CUdeviceptr data_ptr, size_t& shm_region_size)
   }
   return nullptr;
 }
+#endif  // USE_HCU
 
 TRITONSERVER_Error*
 CheckCudaSharedMemoryRegionSize(

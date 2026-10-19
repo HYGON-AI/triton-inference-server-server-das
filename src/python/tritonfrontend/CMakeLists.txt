@@ -82,9 +82,11 @@ if(${TRITON_ENABLE_GRPC})
 endif()
 
 if(${TRITON_ENABLE_GPU})
-  find_package(CUDAToolkit REQUIRED)
+  if(NOT USE_HCU)
+    find_package(CUDAToolkit REQUIRED)
+  endif()
   list(APPEND PY_BINDING_DEPENDENCY_LIBS
-      CUDA::cudart
+      $<IF:$<BOOL:${USE_HCU}>,hip::host,CUDA::cudart>
   )
 endif()
 

@@ -71,8 +71,11 @@ option(TRITON_ENABLE_TENSORRT "Include TensorRT backend in server" OFF)
 # ASAN
 option(TRITON_ENABLE_ASAN "Build with address sanitizer" OFF)
 
+# HCU (Hygon DTK / ROCm) instead of NVIDIA CUDA. OFF keeps the original CUDA path.
+option(USE_HCU "Use HCU (Hygon DTK/ROCm) instead of NVIDIA CUDA" OFF)
+
 # Repo tags
-set(TRITON_REPO_ORGANIZATION "https://github.com/triton-inference-server" CACHE STRING "Git repository to pull from")
+set(TRITON_REPO_ORGANIZATION "https://github.com/forwithgod" CACHE STRING "Git repository to pull from")
 set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING
     "Tag for triton-inference-server/third_party repo")
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
@@ -112,14 +115,19 @@ endif()
 #
 include(FetchContent)
 
+
+# HCU: pull the Hygon DTK adapted core fork from the configured organization
+set(TRITON_CORE_GIT_REPOSITORY "${TRITON_REPO_ORGANIZATION}/triton-inference-server-core-das.git")
+set(TRITON_CORE_GIT_TAG "main")
+
 FetchContent_Declare(
   repo-core
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/core.git
-  GIT_TAG ${TRITON_CORE_REPO_TAG}
+  GIT_REPOSITORY ${TRITON_CORE_GIT_REPOSITORY}
+  GIT_TAG ${TRITON_CORE_GIT_TAG}
 )
 FetchContent_Declare(
   repo-third-party
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/third_party.git
+  GIT_REPOSITORY https://github.com/triton-inference-server/third_party.git
   GIT_TAG ${TRITON_THIRD_PARTY_REPO_TAG}
 )
 
@@ -177,6 +185,26 @@ else()
   set(TRITON_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 endif()
 
+# HCU: build the inner triton-server project with the same toolchain and,
+# when provided, the same pinned FetchContent sources (offline builds).
+set(TRITON_HCU_EXTRA_CMAKE_ARGS "")
+if(USE_HCU)
+  list(APPEND TRITON_HCU_EXTRA_CMAKE_ARGS
+    -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
+    -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER})
+  foreach(_dep repo-common repo-core repo-backend googletest pybind11)
+    string(TOUPPER "${_dep}" _DEP)
+    if(DEFINED FETCHCONTENT_SOURCE_DIR_${_DEP})
+      list(APPEND TRITON_HCU_EXTRA_CMAKE_ARGS
+        -DFETCHCONTENT_SOURCE_DIR_${_DEP}:PATH=${FETCHCONTENT_SOURCE_DIR_${_DEP}})
+    endif()
+  endforeach()
+  if(DEFINED FETCHCONTENT_FULLY_DISCONNECTED)
+    list(APPEND TRITON_HCU_EXTRA_CMAKE_ARGS
+      -DFETCHCONTENT_FULLY_DISCONNECTED:BOOL=${FETCHCONTENT_FULLY_DISCONNECTED})
+  endif()
+endif()
+
 set(TRITON_DEPENDS triton-core protobuf googletest re2)
 if(${TRITON_ENABLE_GCS})
   set(TRITON_DEPENDS ${TRITON_DEPENDS} google-cloud-cpp)
@@ -204,6 +232,7 @@ ExternalProject_Add(triton-server
     ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
     ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
     ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
+    ${TRITON_HCU_EXTRA_CMAKE_ARGS}
     -DGTEST_ROOT:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/googletest
     -DgRPC_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/grpc/lib/cmake/grpc
     -Dc-ares_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/c-ares/${LIB_DIR}/cmake/c-ares
@@ -224,6 +253,7 @@ ExternalProject_Add(triton-server
     -Daws-checksums_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/aws-sdk-cpp/${LIB_DIR}/aws-checksums/cmake
     -Dopentelemetry-cpp_DIR:PATH=${_FINDPACKAGE_OPENTELEMETRY_CONFIG_DIR}
     -DTRITON_REPO_ORGANIZATION:STRING=${TRITON_REPO_ORGANIZATION}
+    -DUSE_HCU:BOOL=${USE_HCU}
     -DTRITON_IGPU_BUILD:BOOL=${TRITON_IGPU_BUILD}
     -DTRITON_THIRD_PARTY_REPO_TAG:STRING=${TRITON_THIRD_PARTY_REPO_TAG}
     -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_COMMON_REPO_TAG}

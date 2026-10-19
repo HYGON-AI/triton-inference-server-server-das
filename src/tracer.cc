@@ -31,7 +31,11 @@
 #include "common.h"
 #include "triton/common/logging.h"
 #ifdef TRITON_ENABLE_GPU
+#ifdef USE_HCU
+#include "server_hcu_compat.h"
+#else
 #include <cuda_runtime_api.h>
+#endif
 #endif  // TRITON_ENABLE_GPU
 #ifndef _WIN32
 #include "opentelemetry/sdk/resource/semantic_conventions.h"

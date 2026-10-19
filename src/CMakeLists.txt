@@ -38,20 +38,29 @@ include(GNUInstallDirs)
 #
 include(FetchContent)
 
+# HCU: pull the Hygon DTK adapted forks from the configured organization
+set(TRITON_COMMON_GIT_REPOSITORY "${TRITON_REPO_ORGANIZATION}/triton-inference-server-common-das.git")
+set(TRITON_COMMON_GIT_TAG "main")
+set(TRITON_CORE_GIT_REPOSITORY "${TRITON_REPO_ORGANIZATION}/triton-inference-server-core-das.git")
+set(TRITON_CORE_GIT_TAG "main")
+set(TRITON_BACKEND_GIT_REPOSITORY "${TRITON_REPO_ORGANIZATION}/triton-inference-server-backend-das.git")
+set(TRITON_BACKEND_GIT_TAG "main")
+
+
 FetchContent_Declare(
   repo-common
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
-  GIT_TAG ${TRITON_COMMON_REPO_TAG}
+  GIT_REPOSITORY ${TRITON_COMMON_GIT_REPOSITORY}
+  GIT_TAG ${TRITON_COMMON_GIT_TAG}
 )
 FetchContent_Declare(
   repo-core
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/core.git
-  GIT_TAG ${TRITON_CORE_REPO_TAG}
+  GIT_REPOSITORY ${TRITON_CORE_GIT_REPOSITORY}
+  GIT_TAG ${TRITON_CORE_GIT_TAG}
 )
 FetchContent_Declare(
   repo-backend
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/backend.git
-  GIT_TAG ${TRITON_BACKEND_REPO_TAG}
+  GIT_REPOSITORY ${TRITON_BACKEND_GIT_REPOSITORY}
+  GIT_TAG ${TRITON_BACKEND_GIT_TAG}
 )
 
 if(TRITON_ENABLE_GRPC)
@@ -64,9 +73,29 @@ FetchContent_MakeAvailable(repo-common repo-core repo-backend)
 # CUDA
 #
 if(${TRITON_ENABLE_GPU})
-  find_package(CUDAToolkit REQUIRED)
-  message(STATUS "Using CUDA ${CUDA_VERSION}")
+  if(USE_HCU)
+    # HCU: use the Hygon DTK / ROCm HIP toolchain instead of CUDA
+    if(DEFINED ENV{DTK_PATH})
+      set(TRITON_DTK_PATH "$ENV{DTK_PATH}")
+    elseif(DEFINED ENV{ROCM_PATH})
+      set(TRITON_DTK_PATH "$ENV{ROCM_PATH}")
+    elseif(EXISTS "/opt/dtk")
+      set(TRITON_DTK_PATH "/opt/dtk")
+    else()
+      set(TRITON_DTK_PATH "/opt/rocm")
+    endif()
+    find_package(hip CONFIG REQUIRED PATHS "${TRITON_DTK_PATH}" "${TRITON_DTK_PATH}/lib/cmake")
+    message(STATUS "Using HIP/DTK at ${TRITON_DTK_PATH}")
+  else()
+    find_package(CUDAToolkit REQUIRED)
+    message(STATUS "Using CUDA ${CUDA_VERSION}")
+  endif()
 endif() # TRITON_ENABLE_GPU
+
+if(USE_HCU)
+  # Expose USE_HCU to the server sources / headers (compat shim + guards)
+  add_compile_definitions(USE_HCU=1)
+endif()
 
 # libevent
 #
@@ -124,7 +153,7 @@ target_compile_features(main PRIVATE cxx_std_${TRITON_MIN_CXX_STANDARD})
 target_compile_options(
   main
   PRIVATE
-    -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror
+    -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations $<$<NOT:$<BOOL:${USE_HCU}>>:-Werror>
 )
 
 # Dependency from common.h
@@ -185,7 +214,7 @@ if(${TRITON_ENABLE_GPU})
   target_link_libraries(
     main
     PRIVATE
-      CUDA::cudart
+      $<IF:$<BOOL:${USE_HCU}>,hip::host,CUDA::cudart>
   )
 endif() # TRITON_ENABLE_GPU
 
@@ -345,7 +374,7 @@ if(${TRITON_ENABLE_HTTP}
   target_compile_options(
     http-endpoint-library
     PRIVATE
-      -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=maybe-uninitialized -Werror
+      -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations $<$<NOT:$<BOOL:${USE_HCU}>>:-Wno-error=maybe-uninitialized> $<$<NOT:$<BOOL:${USE_HCU}>>:-Werror>
   )
 
   set_target_properties(
@@ -388,7 +417,7 @@ if(${TRITON_ENABLE_HTTP}
     target_link_libraries(
       http-endpoint-library
       PUBLIC
-        CUDA::cudart
+        $<IF:$<BOOL:${USE_HCU}>,hip::host,CUDA::cudart>
     )
   endif() # TRITON_ENABLE_GPU
 
@@ -514,7 +543,7 @@ if(${TRITON_ENABLE_TRACING})
     target_link_libraries(
       tracing-library
       PUBLIC
-        CUDA::cudart
+        $<IF:$<BOOL:${USE_HCU}>,hip::host,CUDA::cudart>
     )
   endif() # TRITON_ENABLE_GPU
 
@@ -565,7 +594,7 @@ target_compile_features(simple PRIVATE cxx_std_${TRITON_MIN_CXX_STANDARD})
 target_compile_options(
   simple
   PRIVATE
-    -Wall -Wextra -Wno-type-limits -Wno-unused-parameter -Wno-deprecated-declarations -Werror
+    -Wall -Wextra -Wno-type-limits -Wno-unused-parameter -Wno-deprecated-declarations $<$<NOT:$<BOOL:${USE_HCU}>>:-Werror>
 )
 
 set_target_properties(
@@ -597,7 +626,7 @@ if(${TRITON_ENABLE_GPU})
   target_link_libraries(
     simple
     PRIVATE
-      CUDA::cudart
+      $<IF:$<BOOL:${USE_HCU}>,hip::host,CUDA::cudart>
   )
 endif() # TRITON_ENABLE_GPU
 
@@ -618,7 +647,7 @@ target_compile_features(multi_server PRIVATE cxx_std_${TRITON_MIN_CXX_STANDARD})
 target_compile_options(
   multi_server
   PRIVATE
-    -Wall -Wextra -Wno-type-limits -Wno-unused-parameter -Wno-deprecated-declarations -Werror
+    -Wall -Wextra -Wno-type-limits -Wno-unused-parameter -Wno-deprecated-declarations $<$<NOT:$<BOOL:${USE_HCU}>>:-Werror>
 )
 
 set_target_properties(
@@ -650,7 +679,7 @@ if(${TRITON_ENABLE_GPU})
   target_link_libraries(
     multi_server
     PRIVATE
-      CUDA::cudart
+      $<IF:$<BOOL:${USE_HCU}>,hip::host,CUDA::cudart>
   )
 endif() # TRITON_ENABLE_GPU
 
@@ -672,7 +701,7 @@ if(${TRITON_ENABLE_GPU})
   target_compile_options(
     memory_alloc
     PRIVATE
-      -Wall -Wextra -Wno-type-limits -Wno-unused-parameter -Wno-deprecated-declarations -Werror
+      -Wall -Wextra -Wno-type-limits -Wno-unused-parameter -Wno-deprecated-declarations $<$<NOT:$<BOOL:${USE_HCU}>>:-Werror>
   )
 
   set_target_properties(
@@ -698,7 +727,7 @@ if(${TRITON_ENABLE_GPU})
       triton-common-error             # from repo-common
       triton-core-serverapi           # from repo-core
       triton-core-serverstub          # from repo-core
-      CUDA::cudart
+      $<IF:$<BOOL:${USE_HCU}>,hip::host,CUDA::cudart>
     )
 
   install(
@@ -710,5 +739,9 @@ endif() # TRITON_ENABLE_GPU
 # tritonfrontend python package
 add_subdirectory(python)
 
-add_subdirectory(test test)
+# HCU: the QA test backends use NVIDIA-specific code and strict -Werror;
+# skip them on the HCU path (the server product still builds).
+if(NOT USE_HCU)
+  add_subdirectory(test test)
+endif()
 

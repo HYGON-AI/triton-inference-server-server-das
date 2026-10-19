@@ -24,7 +24,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#ifdef USE_HCU
+#include "server_hcu_compat.h"
+#else
 #include <cuda_runtime_api.h>
+#endif
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <unistd.h>
