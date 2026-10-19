@@ -268,7 +268,7 @@ OpenCudaIPCRegion(
 }
 
 #ifdef USE_HCU
-// HIP (DCU): use hipMemGetAddressRange directly to query the IPC region size
+// HIP (HCU): use hipMemGetAddressRange directly to query the IPC region size
 TRITONSERVER_Error*
 GetCudaSharedMemoryRegionSize(hipDeviceptr_t data_ptr, size_t& shm_region_size)
 {
