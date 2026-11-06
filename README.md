@@ -34,9 +34,10 @@
 - Upstream project: Triton Inference Server
 - Upstream repository: https://github.com/triton-inference-server/server
 - Upstream branch: r26.09
+- Upstream Tag: v2.73.0
 - Upstream Commit: 818762530159ad144f7eee99bd264adcd9389e44
 - Upstream license: BSD-3-Clause
-- Third-party notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- Third-party notices: [docker/README.third-party-src](docker/README.third-party-src)
 
 Modified by Hygon Information Technology Co., Ltd.
 
