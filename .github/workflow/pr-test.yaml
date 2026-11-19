@@ -1,0 +1,29 @@
+name: Trigger Triton Integration CI
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  trigger-test-ci:
+    name: Push Trigger HYGON-AI/triton-inference-server-test CI
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Dispatch remote workflow and wait for completion
+        uses: benc-uk/workflow-dispatch@v1
+        timeout-minutes: 720
+        with:
+          token: ${{ secrets.CROSS_TRIGGER_PAT }}
+          workflow: CI
+          repo: HYGON-AI/triton-inference-server-test
+          ref: main
+          inputs: >
+            {
+              "ci_image": "",
+              "src_repo": "${{ github.repository }}",
+              "src_sha": "${{ github.sha }}"
+            }
+          wait-for-completion: true
